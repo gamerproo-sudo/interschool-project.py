@@ -433,48 +433,59 @@ async def quran_lookup(interaction: discord.Interaction, reference: str):
         await interaction.response.send_message("❌ An error occurred while fetching the Quran verse.")
 
 
-@bot.tree.command(name="get_random_quran_verse", description="Get a random verse from the qur'an")
+@bot.tree.command(name="get_random_quran_verse", description="Get a random verse from the Qur'an")
 async def quran_get(interaction: discord.Interaction):
     if not await check_cooldown_manual(interaction):
         return
-    
+
     logger.info(f"Random Quran verse requested by {interaction.user.name}")
-    
+
     try:
+        # Step 1: Pick a random surah
         surah = random.randint(1, 114)
-        ayah = random.randint(1, 286)
+
+        # Step 2: Fetch surah info to get verse count
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://api.quran.com/api/v4/chapters/{surah}") as resp:
+                surah_data = await resp.json()
+
+        if "chapter" not in surah_data:
+            await interaction.response.send_message("❌ Could not fetch surah info.")
+            return
+
+        verse_count = surah_data["chapter"]["verses_count"]
+        ayah = random.randint(1, verse_count)
         reference = f"{surah}:{ayah}"
-        
-        url = f"https://api.quran.com/api/v4/verses/by_key/{surah}:{ayah}?translations=20&fields=text_uthmani,translation"
-        data = await make_request(url)
-        
-        if not data or 'verse' not in data:
-            await interaction.response.send_message("❌ Could not fetch a random Quran verse. Please try again later.")
+
+        # Step 3: Fetch the verse itself
+        async with aiohttp.ClientSession() as session:
+            url = f"https://api.quran.com/api/v4/verses/by_key/{reference}?translations=20&fields=text_uthmani,translation"
+            async with session.get(url) as resp:
+                data = await resp.json()
+
+        if not data or "verse" not in data:
+            await interaction.response.send_message("❌ Could not fetch that verse.")
             return
-            
-        verse_data = data['verse']
-        arabic_text = verse_data.get('text_uthmani', '')
-        translation = verse_data.get('translation', {}).get('text', '')
-        
-        if not arabic_text and not translation:
-            await interaction.response.send_message("❌ Could not fetch a verse! Please try again.")
-            return
-            
+
+        verse_data = data["verse"]
+        arabic_text = verse_data.get("text_uthmani", "")
+        translation = verse_data.get("translation", {}).get("text", "")
+
         embed = discord.Embed(
             title=f"📖 Random Quran Verse: {reference}",
             color=discord.Color.green()
         )
-        
+
         if arabic_text:
             embed.add_field(name="Arabic", value=arabic_text, inline=False)
         if translation:
             embed.add_field(name="English Translation", value=translation, inline=False)
-            
+
         await interaction.response.send_message(embed=embed)
-        logger.info(f"Successfully fetched random Quran verse: {reference}")
-            
+        logger.info(f"✅ Successfully fetched random Quran verse: {reference}")
+
     except Exception as e:
-        logger.error(f"Random Quran verse error: {e}")
+        logger.exception("Error fetching random Quran verse")
         await interaction.response.send_message("❌ An error occurred while fetching a random Quran verse.")
 
 @bot.tree.command(name="daily_verse", description="Get a daily verse from the Bible or Quran")
