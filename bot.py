@@ -1,5 +1,5 @@
 import discord 
-from discord import app_commands, ui, interaction
+from discord import app_commands, ui, Interaction
 from discord.ext import tasks, commands
 import deep_translator
 import asyncio
@@ -9,9 +9,7 @@ import math as m
 from dotenv import load_dotenv
 import time
 import aiohttp
-import datetime
-import openai
-from openai import OpenAI
+import datetimes
 import yfinance as yf
 import logging
 import urllib.parse
@@ -34,12 +32,6 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-if OPENAI_API_KEY:
-    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
-openai.api_key = OPENAI_API_KEY
-openai_client = OpenAI()
 
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")  
@@ -145,7 +137,7 @@ class GuessNumberView(discord.ui.View):
             hint = "🔽" if difference > 10 else "↘️"
             return f"**{guess}** is too high! {hint} (Attempt #{self.attempts})"
         else:
-            return (f"🎉 **Congratulations {interaction.user.mention}!**\n"
+            return (f"🎉 **Congratulations {Interaction.user.mention}!**\n"
                    f"You guessed the number **{self.target}** in {self.attempts} attempts! 🎯")
 
     @discord.ui.button(label="⬆️ Increase", style=discord.ButtonStyle.primary, row=0)
